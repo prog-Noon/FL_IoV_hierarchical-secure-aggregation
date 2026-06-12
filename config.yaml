@@ -1,0 +1,60 @@
+# =============================================================================
+# IoV Hierarchical Federated Learning — Experiment Configuration
+# =============================================================================
+
+# ── Reproducibility ───────────────────────────────────────────────────────────
+seed: 42
+
+# ── Federation topology ───────────────────────────────────────────────────────
+num_vehicles:  20       # total vehicles (reduced for fast CI; paper uses 100)
+num_rsus:       4       # roadside units
+rounds:        15       # FL rounds (paper uses 50)
+local_epochs:   2       # SGD epochs per vehicle per round
+learning_rate: 0.01
+batch_size:    32
+participation_fraction: 1.0   # fraction of vehicles selected per round
+
+# ── Dataset ───────────────────────────────────────────────────────────────────
+dataset:     MNIST        # MNIST | FashionMNIST | CIFAR10
+iid:         false        # true = IID, false = non-IID Dirichlet
+dirichlet_alpha: 0.5      # concentration parameter (lower = more non-IID)
+
+# ── Model ─────────────────────────────────────────────────────────────────────
+# Chosen automatically based on dataset; see models.py
+
+# ── Crypto ────────────────────────────────────────────────────────────────────
+shamir_threshold: 2
+shamir_n_shares:  3
+
+# ── Dropout ───────────────────────────────────────────────────────────────────
+dropout_rate: 0.1   # fraction of selected vehicles that drop per round
+
+# ── Aggregate transformation ──────────────────────────────────────────────────
+transform_mode: none   # none | dp | projection | dp+projection
+dp_epsilon:     1.0
+dp_sensitivity: 1.0
+projection_dim: 64
+
+# ── Communication model ───────────────────────────────────────────────────────
+# Bit widths for overhead calculation
+float_bytes: 4   # 32-bit float
+
+# ── Experiments to run ────────────────────────────────────────────────────────
+experiments:
+  - exp1_baseline
+  - exp2_hierarchical
+  - exp3_masking
+  - exp4_dropout
+  - exp5_dp
+  - exp6_projection
+  - exp7_full
+
+# ── Experiment-specific sweep values ─────────────────────────────────────────
+dropout_rates:       [0.0, 0.1, 0.2, 0.3, 0.5]
+dp_epsilons:         [0.1, 0.5, 1.0, 2.0, 5.0, 10.0]
+projection_dims:     [16, 32, 64, 128, 256]
+vehicle_counts:      [10, 20, 40]    # for scalability plots
+
+# ── Output ────────────────────────────────────────────────────────────────────
+results_dir: results
+figures_dir:  results/figures
