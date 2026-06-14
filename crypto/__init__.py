@@ -77,7 +77,7 @@ class PRG:
             out += hashlib.sha256(key + struct.pack(">Q", counter)).digest()
             counter += 1
         raw = np.frombuffer(bytes(out[:dim * 8]), dtype=np.int64).astype(np.float64)
-        return raw / (2 ** 63)   # normalise to (-1, 1)
+        return (raw / (2 ** 63)) / np.sqrt(dim)   # normalise to (-1, 1)
 
     def pairwise_mask(
         self, seed: bytes, rid: bytes, dim: int, *, negate: bool = False

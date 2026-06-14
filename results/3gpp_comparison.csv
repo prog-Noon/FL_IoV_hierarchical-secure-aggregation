@@ -1,0 +1,6 @@
+metric,centralised,proposed
+latency_ms,144.77,588.84
+total_bytes_mb,16.22,16.22
+energy_mj,517.86,1726.21
+privacy,none (raw gradients exposed),zone-local pairwise + self-mask
+dropout_handling,none,Bonawitz-correct recovery

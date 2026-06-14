@@ -74,23 +74,67 @@ def fig_accuracy_vs_round(
     title:       str = "Test Accuracy vs. Communication Round",
 ) -> None:
     _setup()
-    fig, ax = plt.subplots(figsize=(7, 4.5))
+
+    high = {k: v for k, v in loggers.items()
+            if v.records and v.records[-1].test_accuracy >= 0.5}
+    low  = {k: v for k, v in loggers.items()
+            if v.records and v.records[-1].test_accuracy < 0.5}
+    has_both = bool(high) and bool(low)
+
+    if has_both:
+        fig, (ax_main, ax_zoom) = plt.subplots(1, 2, figsize=(12, 4.5))
+        fig.suptitle(title, fontsize=13)
+    else:
+        fig, ax_main = plt.subplots(figsize=(7, 4.5))
+        ax_zoom = None
+        ax_main.set_title(title)
+
     for i, (label, logger) in enumerate(loggers.items()):
         rounds = [m.round_idx + 1 for m in logger.records]
         accs   = [m.test_accuracy * 100 for m in logger.records]
-        ax.plot(rounds, accs,
-                color=COLORS[i % len(COLORS)],
-                marker=MARKERS[i % len(MARKERS)],
-                markevery=max(1, len(rounds) // 8),
-                label=label)
-    ax.set_xlabel("Round")
-    ax.set_ylabel("Test Accuracy (%)")
-    ax.set_title(title)
-    ax.legend(loc="lower right")
-    ax.yaxis.set_major_formatter(ticker.FormatStrFormatter("%.1f"))
-    ax.set_xlim(left=1)
-    _savefig(fig, os.path.join(figures_dir, "fig1_accuracy_vs_round"))
+        lw = 2.5 if logger.records[-1].test_accuracy >= 0.5 else 1.5
+        ax_main.plot(rounds, accs,
+                     color=COLORS[i % len(COLORS)],
+                     marker=MARKERS[i % len(MARKERS)],
+                     markevery=max(1, len(rounds) // 8),
+                     linewidth=lw,
+                     label=label)
+    ax_main.set_xlabel("Round")
+    ax_main.set_ylabel("Test Accuracy (%)")
+    ax_main.set_xlim(left=1)
+    ax_main.yaxis.set_major_formatter(ticker.FormatStrFormatter("%.1f"))
+    if not has_both:
+        ax_main.legend(loc="lower right")
+    else:
+        ax_main.set_title("All experiments")
+        ax_main.legend(loc="center right", fontsize=9)
 
+    if ax_zoom is not None and high:
+        for i, (label, logger) in enumerate(loggers.items()):
+            if label not in high:
+                continue
+            rounds = [m.round_idx + 1 for m in logger.records]
+            accs   = [m.test_accuracy * 100 for m in logger.records]
+            ax_zoom.plot(rounds, accs,
+                         color=COLORS[i % len(COLORS)],
+                         marker=MARKERS[i % len(MARKERS)],
+                         markevery=max(1, len(rounds) // 8),
+                         linewidth=2.5,
+                         label=label)
+        min_acc = min(
+            m.test_accuracy * 100
+            for lg in high.values() for m in lg.records
+        )
+        ax_zoom.set_ylim(bottom=max(0, min_acc - 5), top=101)
+        ax_zoom.set_xlabel("Round")
+        ax_zoom.set_ylabel("Test Accuracy (%)")
+        ax_zoom.set_title("Zoomed: high-accuracy experiments")
+        ax_zoom.set_xlim(left=1)
+        ax_zoom.yaxis.set_major_formatter(ticker.FormatStrFormatter("%.1f"))
+        ax_zoom.legend(loc="lower right", fontsize=9)
+
+    fig.tight_layout()
+    _savefig(fig, os.path.join(figures_dir, "fig1_accuracy_vs_round"))
 
 # =============================================================================
 # Figure 2 — Training Loss vs Round
@@ -102,22 +146,59 @@ def fig_loss_vs_round(
     title:       str = "Test Loss vs. Communication Round",
 ) -> None:
     _setup()
-    fig, ax = plt.subplots(figsize=(7, 4.5))
+
+    low_loss  = {k: v for k, v in loggers.items()
+                 if v.records and v.records[-1].test_loss <= 1.0}
+    high_loss = {k: v for k, v in loggers.items()
+                 if v.records and v.records[-1].test_loss > 1.0}
+    has_both = bool(low_loss) and bool(high_loss)
+
+    if has_both:
+        fig, (ax_main, ax_zoom) = plt.subplots(1, 2, figsize=(12, 4.5))
+        fig.suptitle(title, fontsize=13)
+    else:
+        fig, ax_main = plt.subplots(figsize=(7, 4.5))
+        ax_zoom = None
+        ax_main.set_title(title)
+
     for i, (label, logger) in enumerate(loggers.items()):
         rounds = [m.round_idx + 1 for m in logger.records]
         losses = [m.test_loss for m in logger.records]
-        ax.plot(rounds, losses,
-                color=COLORS[i % len(COLORS)],
-                marker=MARKERS[i % len(MARKERS)],
-                markevery=max(1, len(rounds) // 8),
-                label=label)
-    ax.set_xlabel("Round")
-    ax.set_ylabel("Cross-Entropy Loss")
-    ax.set_title(title)
-    ax.legend(loc="upper right")
-    ax.set_xlim(left=1)
-    _savefig(fig, os.path.join(figures_dir, "fig2_loss_vs_round"))
+        ax_main.plot(rounds, losses,
+                     color=COLORS[i % len(COLORS)],
+                     marker=MARKERS[i % len(MARKERS)],
+                     markevery=max(1, len(rounds) // 8),
+                     label=label)
+    ax_main.set_xlabel("Round")
+    ax_main.set_ylabel("Cross-Entropy Loss")
+    ax_main.set_xlim(left=1)
+    if not has_both:
+        ax_main.legend(loc="upper right")
+        ax_main.set_title(title)
+    else:
+        ax_main.set_title("All experiments (log scale)")
+        ax_main.set_yscale("log")
+        ax_main.legend(loc="upper right", fontsize=9)
 
+    if ax_zoom is not None and low_loss:
+        for i, (label, logger) in enumerate(loggers.items()):
+            if label not in low_loss:
+                continue
+            rounds = [m.round_idx + 1 for m in logger.records]
+            losses = [m.test_loss for m in logger.records]
+            ax_zoom.plot(rounds, losses,
+                         color=COLORS[i % len(COLORS)],
+                         marker=MARKERS[i % len(MARKERS)],
+                         markevery=max(1, len(rounds) // 8),
+                         label=label)
+        ax_zoom.set_xlabel("Round")
+        ax_zoom.set_ylabel("Cross-Entropy Loss")
+        ax_zoom.set_title("Zoomed: converged experiments (Exp 1 & 2)")
+        ax_zoom.set_xlim(left=1)
+        ax_zoom.legend(loc="upper right", fontsize=9)
+
+    fig.tight_layout()
+    _savefig(fig, os.path.join(figures_dir, "fig2_loss_vs_round"))
 
 # =============================================================================
 # Figure 3 — Communication Overhead vs Number of Vehicles
